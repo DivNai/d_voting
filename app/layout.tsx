@@ -1,12 +1,15 @@
-// app/layout.tsx
+// Inside app/layout.tsx
+import './globals.css';
+import NavBar from "@/components/NavBar";
 import { Web3Provider } from "@/context/Web3Context";
-import "./globals.css";
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
         <Web3Provider>
-          {children}
+          <NavBar /> {/* <--- Add it here */}
+          <main>{children}</main>
         </Web3Provider>
       </body>
     </html>

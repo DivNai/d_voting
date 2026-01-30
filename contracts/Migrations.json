@@ -191,7 +191,7 @@
                             "name": "msg",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 311,
+                            "referencedDeclaration": 271,
                             "src": "158:3:1",
                             "typeDescriptions": {
                               "typeIdentifier": "t_magic_message",
@@ -267,10 +267,10 @@
                       "name": "require",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [
-                        314,
-                        315
+                        274,
+                        275
                       ],
-                      "referencedDeclaration": 315,
+                      "referencedDeclaration": 275,
                       "src": "150:7:1",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_require_pure$_t_bool_$_t_string_memory_ptr_$returns$__$",
@@ -352,7 +352,7 @@
                         "name": "msg",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 311,
+                        "referencedDeclaration": 271,
                         "src": "264:3:1",
                         "typeDescriptions": {
                           "typeIdentifier": "t_magic_message",
@@ -925,10 +925,10 @@
                                 }
                               ],
                               "overloadedDeclarations": [
-                                314,
-                                315
+                                274,
+                                275
                               ],
-                              "referencedDeclaration": 315,
+                              "referencedDeclaration": 275,
                               "type": "function (bool,string memory) pure",
                               "value": "require"
                             },
@@ -969,7 +969,7 @@
                                       "overloadedDeclarations": [
                                         null
                                       ],
-                                      "referencedDeclaration": 311,
+                                      "referencedDeclaration": 271,
                                       "type": "msg",
                                       "value": "msg"
                                     },
@@ -1128,7 +1128,7 @@
                                   "overloadedDeclarations": [
                                     null
                                   ],
-                                  "referencedDeclaration": 311,
+                                  "referencedDeclaration": 271,
                                   "type": "msg",
                                   "value": "msg"
                                 },
@@ -1585,7 +1585,7 @@
   },
   "networks": {},
   "schemaVersion": "3.4.16",
-  "updatedAt": "2026-01-29T16:01:54.476Z",
+  "updatedAt": "2026-01-30T17:29:53.939Z",
   "networkType": "ethereum",
   "devdoc": {
     "methods": {}
