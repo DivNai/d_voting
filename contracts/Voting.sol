@@ -59,4 +59,21 @@ contract Voting {
     function getDates() public view returns (uint256, uint256) {
       return (votingStart, votingEnd);
     }
+
+    // Add these to Voting.sol
+
+function removeCandidate(uint _candidateId) public {
+    require(_candidateId > 0 && _candidateId <= candidatesCount, "Invalid ID");
+    delete candidates[_candidateId];
+}
+
+function resetElection() public {
+    // Reset candidates count
+    candidatesCount = 0;
+    // Reset dates
+    votingStart = 0;
+    votingEnd = 0;
+    // Note: To reset the 'voters' mapping, you'd usually deploy a new contract
+    // or use a versioning system, as mapping keys cannot be iterated and cleared.
+}
 }

@@ -3,162 +3,203 @@ import React, { useState } from 'react';
 import { useWeb3 } from '@/context/Web3Context';
 
 const AdminPortal = () => {
-  const { addCandidate, dates, contract,account,loading ,setLoading,txLoading,setTxLoading,updateElectionDates} = useWeb3(); // Ensure contract is exposed in useWeb3
-  const [name, setName] = useState("");
-  const [party, setParty] = useState("");
+  const { 
+    contract, 
+    loading, 
+    txLoading, 
+    pushElectionData,
+    resetBlockchainData, // Destructured to fix ReferenceError
+    candidates = [], 
+    dates = { start: "", end: "" } 
+  } = useWeb3();
   
-  // Date states
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    party: "",
+    startDate: "",
+    endDate: ""
+  });
 
-  // Function to handle date setting
-  const handleSetDates = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!startDate || !endDate) return alert("Please select both dates");
-    
-    // Call the function from Context
-    await updateElectionDates(startDate, endDate);
+
+    if (!formData.name || !formData.party || !formData.startDate || !formData.endDate) {
+      return alert("All fields are required before pushing to blockchain.");
+    }
+
+    try {
+      await pushElectionData(
+        formData.name, 
+        formData.party, 
+        formData.startDate, 
+        formData.endDate
+      );
+      
+      alert("Success! Candidate and Timeline are now live on the Blockchain.");
+      setFormData({ name: "", party: "", startDate: "", endDate: "" });
+    } catch (err: any) {
+      alert("Transaction Error: " + (err.reason || "Check MetaMask console"));
+    }
   };
 
-  // If the context is still connecting to Ganache
   if (loading || !contract) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-emerald-500">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-emerald-500">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-500 mb-4"></div>
-        <p className="font-mono text-sm uppercase tracking-widest">
-          Establishing Blockchain Connection...
-        </p>
+        <p className="font-mono text-sm uppercase tracking-widest">Synchronizing Node...</p>
       </div>
     );
   }
 
-  // const handleSetDates = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!contract) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
-  //       <div className="text-center">
-  //         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500 mb-4 mx-auto"></div>
-  //         <p className="text-emerald-400 font-mono">Connecting to Ganache Node 1337...</p>
-  //         <p className="text-xs text-gray-500 mt-2">Make sure MetaMask is logged in</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
-  //   try {
-  //     // Convert to Unix Timestamp (seconds)
-  //     const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  //     const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
-
-  //     // This call triggers the MetaMask popup
-  //     const tx = await contract.setDates(startTimestamp, endTimestamp);
-  //     alert("Please confirm the transaction in MetaMask...");
-      
-  //     await tx.wait(); // Wait for blockchain confirmation
-  //     alert("Election timeline updated successfully!");
-  //   } catch (err: any) {
-  //     console.error(err);
-  //     alert(err.reason || "Transaction failed");
-  //   }
-  // };
-
-//   const handleSetDates = async () => {
-//   try {
-//     setTxLoading(true);
-    
-//     // Ensure dates are converted to Unix Timestamps (Seconds)
-//     const startUnix = Math.floor(new Date(startDate).getTime() / 1000);
-//     const endUnix = Math.floor(new Date(endDate).getTime() / 1000);
-
-//     // This is the line triggering your MetaMask popup
-//     const tx = await contract.setElectionDates(startUnix, endUnix);
-    
-//     console.log("Transaction sent! Waiting for confirmation...");
-//     await tx.wait(); 
-    
-//     alert("Timeline updated on Blockchain!");
-//   } catch (error: any) {
-//     if (error.code === "ACTION_REJECTED") {
-//       alert("Transaction was cancelled in MetaMask.");
-//     } else {
-//       console.error("Blockchain Error:", error);
-//     }
-//   } finally {
-//     setTxLoading(false);
-//   }
-// };
-
-  const handleAddCandidate = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-    // This will now find the function in the Context
-    await addCandidate(name, party); 
-    setName(""); 
-    setParty("");
-    alert("Candidate added successfully!");
-  } catch (err: any) {
-    alert("Error: " + (err.reason || "Transaction failed"));
-  }
-};
-
   return (
     <div className="p-8 bg-slate-900 min-h-screen text-white">
       <header className="mb-10 text-center">
-        <h1 className="text-4xl font-bold text-emerald-500 mb-2">Admin Control Center</h1>
-        <p className="text-gray-400 font-mono">Network ID: 1337 | Dehradun Node</p>
+        <h1 className="text-4xl font-bold text-emerald-500 mb-2 uppercase tracking-tight">Admin Portal</h1>
+        <p className="text-gray-400 font-mono">Project: Decentralized Voting System</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Date Setter Section */}
-        <div className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-xl">
-          <h2 className="text-xl font-semibold mb-6 border-b border-emerald-500 pb-2">Set Election Timeline</h2>
-          <form onSubmit={handleSetDates} className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Start Date & Time</label>
-              <input 
-                type="datetime-local" 
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 bg-slate-800 rounded border border-white/20 focus:outline-emerald-500"
-              />
+      {/* Main Grid: Form on Left, Data on Right */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        
+        {/* LEFT SIDE: FORM */}
+        <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 shadow-2xl">
+          <h2 className="text-xl font-semibold mb-8 border-b border-emerald-500/50 pb-3 flex items-center gap-2">
+            <span className="p-1 bg-emerald-500 rounded text-slate-900 text-xs font-bold">STEP 1 & 2</span>
+            Configure Election Data
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-xs text-emerald-500 uppercase font-bold mb-2">Candidate Name</label>
+                <input
+                  type="text"
+                  placeholder="Ex: John Doe"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 bg-slate-800 rounded-lg border border-white/10 focus:border-emerald-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-emerald-500 uppercase font-bold mb-2">Political Party</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Tech Party"
+                  value={formData.party}
+                  onChange={(e) => setFormData({...formData, party: e.target.value})}
+                  className="w-full p-3 bg-slate-800 rounded-lg border border-white/10 focus:border-emerald-500 outline-none transition"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">End Date & Time</label>
-              <input 
-                type="datetime-local" 
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full p-3 bg-slate-800 rounded border border-white/20 focus:outline-emerald-500"
-              />
+
+            <hr className="border-white/5" />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-emerald-500 uppercase font-bold mb-2">Start Time</label>
+                <input
+                  type="datetime-local"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                  className="w-full p-3 bg-slate-800 rounded-lg border border-white/10 focus:border-emerald-500 outline-none transition text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-emerald-500 uppercase font-bold mb-2">End Time</label>
+                <input
+                  type="datetime-local"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                  className="w-full p-3 bg-slate-800 rounded-lg border border-white/10 focus:border-emerald-500 outline-none transition text-sm"
+                />
+              </div>
             </div>
-            <button 
-      onClick={handleSetDates}
-      disabled={txLoading}
-      className="bg-emerald-600 p-2 rounded disabled:bg-gray-600"
-    >
-      {txLoading ? "Updating Blockchain..." : "Update Timeline"}
-    </button>
+
+            <div className="pt-6">
+              <button
+                type="submit"
+                disabled={txLoading}
+                className="w-full group relative flex justify-center py-4 px-4 border border-transparent text-lg font-black rounded-xl text-slate-900 bg-emerald-500 hover:bg-emerald-400 focus:outline-none transition-all disabled:bg-slate-700 disabled:text-slate-500"
+              >
+                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                  {txLoading ? "⚡" : "🚀"}
+                </span>
+                {txLoading ? "Processing on Blockchain..." : "Push All to Blockchain"}
+              </button>
+              <p className="text-center text-[10px] text-gray-500 mt-4 uppercase tracking-widest font-mono">
+                This action will require 2 MetaMask confirmations
+              </p>
+            </div>
           </form>
         </div>
 
-        {/* Add Candidate Section */}
-        <div className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-xl">
-          <h2 className="text-xl font-semibold mb-6 border-b border-emerald-500 pb-2">Add New Candidate</h2>
-          <form onSubmit={handleAddCandidate} className="space-y-4">
-            <input
-              type="text" placeholder="Candidate Name" value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded border border-white/20 focus:outline-emerald-500"
-            />
-            <input
-              type="text" placeholder="Party Name" value={party}
-              onChange={(e) => setParty(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded border border-white/20 focus:outline-emerald-500"
-            />
-            <button className="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded font-bold transition">
-              Push to Blockchain
+        {/* RIGHT SIDE: LIVE DATA & DANGER ZONE */}
+        <section className="space-y-8">
+          {/* Timeline View */}
+          <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-xl">
+            <h3 className="text-emerald-500 text-sm font-bold uppercase mb-4 tracking-widest">Active Timeline</h3>
+            <div className="flex justify-between text-center">
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Starts</p>
+                <p className="font-mono text-sm">{dates.start || "Not Set"}</p>
+              </div>
+              <div className="h-10 w-[1px] bg-white/10 mx-2"></div>
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Ends</p>
+                <p className="font-mono text-sm">{dates.end || "Not Set"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Candidates View */}
+          <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-xl overflow-hidden">
+            <h3 className="text-emerald-500 text-sm font-bold uppercase mb-4 tracking-widest flex justify-between">
+              Registered Candidates
+              <span className="text-[10px] bg-emerald-500/10 px-2 py-1 rounded text-emerald-400">{candidates.length}</span>
+            </h3>
+            <div className="max-h-60 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-emerald-500">
+              {candidates.length > 0 ? (
+                candidates.map((c: any) => (
+                  <div key={c.id} className="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-white/5">
+                    <div>
+                      <p className="font-bold text-white">{c.name}</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-tighter">{c.party}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-emerald-400 font-mono font-bold text-lg">{c.voteCount}</p>
+                      <p className="text-[8px] text-gray-500 uppercase">Votes</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500 italic py-4 text-sm">No candidates on ledger.</p>
+              )}
+            </div>
+          </div>
+
+          {/* DANGER ZONE */}
+          <div className="bg-red-500/5 backdrop-blur-md p-6 rounded-3xl border border-red-500/20 shadow-xl">
+            <h3 className="text-red-500 text-sm font-bold uppercase mb-4 tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              System Danger Zone
+            </h3>
+            <p className="text-[10px] text-gray-500 mb-4 italic">
+              Resetting will wipe all candidates and timelines from the current contract instance.
+            </p>
+            <button
+              onClick={() => {
+                if(confirm("Are you sure? This will wipe the blockchain registry!")) {
+                  resetBlockchainData();
+                }
+              }}
+              disabled={txLoading}
+              className="w-full py-3 bg-transparent border border-red-500/40 hover:bg-red-500/10 text-red-500 rounded-xl text-xs font-bold transition-all uppercase tracking-widest disabled:opacity-30"
+            >
+              {txLoading ? "Clearing Ledger..." : "Reset Election Ledger"}
             </button>
-          </form>
-        </div>
+          </div>
+        </section>
+
       </div>
     </div>
   );

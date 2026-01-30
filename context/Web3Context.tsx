@@ -156,10 +156,61 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
     } finally { setTxLoading(false); }
   };
 
+  // Combined function to push both candidate and timeline
+  const pushElectionData = async (name: string, party: string, start: string, end: string) => {
+  if (!contract) throw new Error("Contract not connected");
+
+  try {
+    setTxLoading(true);
+
+    // 1. Trigger MetaMask for the Candidate
+    console.log("Requesting Candidate Transaction...");
+    const candTx = await contract.addCandidate(name, party);
+    await candTx.wait(); // Wait for mining
+
+    // 2. Trigger MetaMask for the Timeline
+    console.log("Requesting Timeline Transaction...");
+    const startUnix = Math.floor(new Date(start).getTime() / 1000);
+    const endUnix = Math.floor(new Date(end).getTime() / 1000);
+    const dateTx = await contract.setDates(startUnix, endUnix);
+
+    await dateTx.wait();
+    // UPDATE STATE so Admin UI shows the new timeline immediately
+    setDates({ start, end });
+
+    // Refresh global state
+    await refreshData(contract, account, userInfo?.id);
+    return true;
+  } catch (error) {
+    console.error("Blockchain Error:", error);
+    throw error;
+  } finally {
+    setTxLoading(false);
+  }
+};
+
+// Inside Web3Context.tsx
+
+const resetBlockchainData = async () => {
+  try {
+    setTxLoading(true);
+    const tx = await contract.resetElection();
+    await tx.wait();
+    // Refresh the UI state
+    setCandidates([]);
+    setDates({ start: "", end: "" });
+    alert("Blockchain state reset successfully!");
+  } catch (err) {
+    console.error("Reset failed", err);
+  } finally {
+    setTxLoading(false);
+  }
+};
+
   return (
     <Web3Context.Provider value={{ 
       account, contract, candidates, dates, hasVoted, userInfo, 
-      loading, txLoading, refreshData,setUserInfo, addCandidate, updateElectionDates, vote 
+      loading, txLoading, refreshData,setUserInfo, addCandidate, updateElectionDates, vote , pushElectionData , resetBlockchainData
     }}>
       {children}
     </Web3Context.Provider>
