@@ -63,11 +63,11 @@ const LoginCard: React.FC<LoginCardProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 bg-[url('/assets/eth5.jpg')] bg-cover bg-center bg-fixed relative">
+    <div className="min-h-screen flex flex-col items-center justify-start bg-black bg-[url('/assets/eth5.jpg')] bg-cover bg-center bg-fixed relative">
       {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/60 z-0 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-black/70 z-0 pointer-events-none"></div>
 
-      <div className="z-10 w-full max-w-md px-4">
+      <div className="z-10 w-full max-w-md px-2">
         <div className="bg-black/40 backdrop-blur-md p-8 rounded-xl border border-white/10 shadow-2xl">
           <h2 className="text-2xl font-semibold text-white mb-6 text-center tracking-wide uppercase">
             Voter Login

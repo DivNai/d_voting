@@ -52,10 +52,13 @@ const AdminPortal = () => {
   }
 
   return (
-    <div className="p-8 bg-slate-900 min-h-screen text-white">
+    <div className="p-2 bg-slate-900 min-h-screen text-white">
       <header className="mb-10 text-center">
         <h1 className="text-4xl font-bold text-emerald-500 mb-2 uppercase tracking-tight">Admin Portal</h1>
-        <p className="text-gray-400 font-mono">Project: Decentralized Voting System</p>
+        <p className="text-gray-400 max-w-2xl mx-auto">
+          Manage election candidates and timelines directly on the blockchain. 
+          Use the form below to add candidates and set election start/end times.
+        </p>
       </header>
 
       {/* Main Grid: Form on Left, Data on Right */}
@@ -130,6 +133,20 @@ const AdminPortal = () => {
                 This action will require 2 MetaMask confirmations
               </p>
             </div>
+            
+{/* <input
+  type="text"
+  disabled={txLoading} // Prevent changes during sync
+  value={formData.name}
+  onChange={(e) => setFormData({...formData, name: e.target.value})}
+  className="w-full p-3 bg-slate-800 rounded-lg disabled:opacity-50"
+/> */}
+
+{txLoading && (
+  <p className="text-center text-emerald-400 animate-pulse text-[10px] mt-2 font-mono">
+    Transaction pending... Please do not refresh the page.
+  </p>
+)}
           </form>
         </div>
 
@@ -178,7 +195,7 @@ const AdminPortal = () => {
           </div>
 
           {/* DANGER ZONE */}
-          <div className="bg-red-500/5 backdrop-blur-md p-6 rounded-3xl border border-red-500/20 shadow-xl">
+          {/* <div className="bg-red-500/5 backdrop-blur-md p-6 rounded-3xl border border-red-500/20 shadow-xl">
             <h3 className="text-red-500 text-sm font-bold uppercase mb-4 tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
               System Danger Zone
@@ -197,7 +214,7 @@ const AdminPortal = () => {
             >
               {txLoading ? "Clearing Ledger..." : "Reset Election Ledger"}
             </button>
-          </div>
+          </div> */}
         </section>
 
       </div>

@@ -51,7 +51,7 @@ const { candidates, userInfo, vote, hasVoted, contract, account, refreshData, lo
                   <th className="py-4 px-2">Select</th>
                   <th className="py-4">Candidate</th>
                   <th className="py-4">Party</th>
-                  <th className="py-4 text-right">Blockchain Count</th>
+                  {/* <th className="py-4 text-right">Blockchain Count</th> */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -70,9 +70,9 @@ const { candidates, userInfo, vote, hasVoted, contract, account, refreshData, lo
                       </td>
                       <td className="py-6 font-medium text-lg">{candidate.name}</td>
                       <td className="py-6 text-gray-400">{candidate.party}</td>
-                      <td className="py-6 text-right font-mono text-emerald-400 text-xl font-bold">
+                      {/* <td className="py-6 text-right font-mono text-emerald-400 text-xl font-bold">
                         {candidate.voteCount}
-                      </td>
+                      </td> */}
                     </tr>
                   ))
                 ) : (
