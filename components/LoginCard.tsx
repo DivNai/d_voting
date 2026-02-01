@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabaseClient';
+import { toast } from 'react-hot-toast'; // Import toast
 
 interface LoginCardProps {
   onLogin: (role: string) => void;
@@ -19,7 +20,7 @@ const LoginCard: React.FC<LoginCardProps> = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      // 1. Authenticate with Supabase Auth
+      // 1. Authenticate with Supabase
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -28,7 +29,7 @@ const LoginCard: React.FC<LoginCardProps> = ({ onLogin }) => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // 2. Fetch User Role from the 'profiles' table
+        // 2. Fetch User Role
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
@@ -36,17 +37,15 @@ const LoginCard: React.FC<LoginCardProps> = ({ onLogin }) => {
           .single();
 
         if (profileError) {
-          console.error("Profile Fetch Error:", profileError.message);
-          // Fallback: If profile doesn't exist, assume 'voter' or redirect anyway
+          toast.error("Profile access restricted.");
           router.push('/account');
           return;
         }
 
-        // 3. Trigger the onLogin callback (used for state management in parent)
         if (profile) {
           onLogin(profile.role);
+          toast.success(`Access Granted: ${profile.role} session active`);
           
-          // 4. Redirect based on role
           if (profile.role === 'admin') {
             router.push('/admin');
           } else {
@@ -55,61 +54,65 @@ const LoginCard: React.FC<LoginCardProps> = ({ onLogin }) => {
         }
       }
     } catch (error: any) {
-      console.error("Login Process Error:", error.message || error);
-      alert(error.message || "An unexpected error occurred during login.");
+      // 3. Replace alert with toast
+      toast.error(error.message || "Invalid credentials provided.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start bg-black bg-[url('/assets/eth5.jpg')] bg-cover bg-center bg-fixed relative">
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/70 z-0 pointer-events-none"></div>
-
-      <div className="z-10 w-full max-w-md px-2">
-        <div className="bg-black/40 backdrop-blur-md p-8 rounded-xl border border-white/10 shadow-2xl">
-          <h2 className="text-2xl font-semibold text-white mb-6 text-center tracking-wide uppercase">
-            Voter Login
-          </h2>
+    <div className="min-h-screen flex flex-col items-center justify-start pt-20 relative px-4">
+      <div className="z-10 w-full max-w-md">
+        <div className="bg-white/5 backdrop-blur-2xl p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
+          <div className="flex flex-col items-center mb-8">
+             {/* Brand Icon to match NavBar */}
+             <div className="h-12 w-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-4">
+                <span className="text-slate-900 font-black text-2xl">V</span>
+             </div>
+             <h2 className="text-2xl font-black text-white text-center tracking-tight uppercase">
+               Authorize Access
+             </h2>
+             <p className="text-[10px] text-emerald-500 font-mono tracking-[0.3em] uppercase mt-2">Secure Voter Gateway</p>
+          </div>
           
-          <form className="space-y-6" onSubmit={handleLogin}>
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">Email Address</label>
+          <form className="space-y-5" onSubmit={handleLogin}>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase text-gray-400 font-bold ml-1">Email Identity</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="voter@example.com"
                 required
-                className="w-full px-4 py-3 rounded-lg bg-white/90 focus:ring-2 focus:ring-emerald-500 text-gray-900 outline-none transition"
+                className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/10 focus:border-emerald-500 text-white outline-none transition-all placeholder:text-gray-700"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">Password</label>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase text-gray-400 font-bold ml-1">Secret Key</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full px-4 py-3 rounded-lg bg-white/90 focus:ring-2 focus:ring-emerald-500 text-gray-900 outline-none transition"
+                className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/10 focus:border-emerald-500 text-white outline-none transition-all placeholder:text-gray-700"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-600 text-white font-bold rounded-lg shadow-lg transition duration-300 uppercase tracking-wider"
+              className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-gray-600 text-slate-900 font-black rounded-xl shadow-xl shadow-emerald-600/10 transition-all active:scale-95 uppercase tracking-widest text-xs mt-4"
             >
-              {loading ? "Authenticating..." : "Login"}
+              {loading ? "Decrypting..." : "Open Secure Session"}
             </button>
           </form>
           
-          <p className="mt-4 text-center text-xs text-gray-400 font-mono">
-            Secured by Ethereum & Supabase
-          </p>
+          <div className="mt-8 pt-6 border-t border-white/5 flex justify-center text-[9px] text-gray-500 font-mono uppercase tracking-[0.2em]">
+            Blockchain Ledger Node Active
+          </div>
         </div>
       </div>
     </div>

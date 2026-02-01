@@ -38,13 +38,19 @@ const NavBar = () => {
         {/* Action Area */}
         <div className="flex items-center gap-4 md:gap-8">
           
-          <Link 
-            href="/results" 
-            className={`text-xs uppercase tracking-widest font-bold transition-colors ${isActive('/results') ? 'text-emerald-400' : 'text-gray-400 hover:text-white'}`}
-          >
-            Results
-          </Link>
+          {/* RESULTS LINK: Only visible if user is NOT a voter (e.g., Admin) 
+              Or you can set it to only show for admin: userInfo?.role === 'admin'
+          */}
+          {userInfo && userInfo.role !== 'voter' && (
+            <Link 
+              href="/results" 
+              className={`text-xs uppercase tracking-widest font-bold transition-colors ${isActive('/results') ? 'text-emerald-400' : 'text-gray-400 hover:text-white'}`}
+            >
+              Results
+            </Link>
+          )}
 
+          
           {userInfo ? (
             <div className="flex items-center gap-3 pl-6 border-l border-white/10">
               

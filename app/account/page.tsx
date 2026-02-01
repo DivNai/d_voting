@@ -4,160 +4,187 @@ import { useWeb3 } from '@/context/Web3Context';
 import { useRouter } from 'next/navigation';
 
 const AccountPage = () => {
-  const { userInfo, account, hasVoted, dates, loading } = useWeb3();
+  const { userInfo, account, hasVoted, dates, loading, electionStatus } = useWeb3();
   const router = useRouter();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4 text-emerald-500">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-emerald-500">
         <div className="h-10 w-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
-        <p className="font-mono text-xs uppercase tracking-widest">Accessing Secure Ledger...</p>
+        <p className="font-mono text-xs uppercase tracking-widest">Accessing Ledger...</p>
       </div>
     );
   }
 
+  // Helper to determine CTA button appearance and destination
+  const getCTAConfig = () => {
+    if (electionStatus === "CLOSED") {
+      return {
+        text: "View Final Results",
+        path: "/results",
+        style: "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20",
+        disabled: false
+      };
+    }
+    if (hasVoted) {
+      return {
+        text: "Vote Recorded",
+        path: "#",
+        style: "bg-slate-800 text-gray-500 cursor-not-allowed border border-white/5",
+        disabled: true
+      };
+    }
+    if (electionStatus === "UPCOMING") {
+      return {
+        text: "Polls Opening Soon",
+        path: "#",
+        style: "bg-amber-600/20 text-amber-500 border border-amber-500/30 cursor-wait",
+        disabled: true
+      };
+    }
+    return {
+      text: "Enter Voting Booth",
+      path: "/voting",
+      style: "bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-emerald-500/20",
+      disabled: false
+    };
+  };
+
+  const cta = getCTAConfig();
+
   return (
-    // pt-28 ensures it starts below the fixed NavBar
-    <div className="min-h-screen bg-slate-900 pt-16 pb-8 px-4 bg-[url('/assets/eth-bg.jpg')] bg-cover bg-fixed relative overflow-hidden">
-      
-      {/* Refined Glassmorphism Overlay */}
-      <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-0"></div>
+    <div className="min-h-screen pt-28 pb-12 px-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none"></div>
 
       <div className="relative z-10 max-w-4xl mx-auto">
         
         {/* TOP SECTION: PROFILE HEADER */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-6 shadow-2xl backdrop-blur-md">
-          <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
-            <div className="relative">
-              <div className="h-32 w-32 bg-gradient-to-br from-emerald-400 to-blue-600 rounded-2xl flex items-center justify-center text-4xl font-black text-slate-900 shadow-2xl  hover:rotate-0 transition-transform duration-500">
+        <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 mb-6 shadow-2xl backdrop-blur-md">
+          <div className="flex flex-col md:flex-row items-center gap-10 text-center md:text-left">
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-tr from-emerald-500 to-blue-500 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+              <div className="relative h-32 w-32 bg-slate-800 rounded-3xl flex items-center justify-center text-5xl font-black text-emerald-500 border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-105">
                 {userInfo?.name ? userInfo.name[0].toUpperCase() : "V"}
               </div>
-              {/* <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-slate-900 text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-tighter shadow-xl">
-                Verified Voter
-              </div> */}
             </div>
 
-            {/* <div className="flex-1">
-              <h1 className="text-4xl font-black text-white tracking-tight mb-1">{userInfo?.name}</h1>
-              <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-2">
-                <span className="text-emerald-400 font-mono text-sm bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 italic">
+            <div className="flex-1 flex flex-col items-center md:items-start">
+              <p className="text-[10px] text-emerald-500 font-mono tracking-[0.4em] uppercase mb-2 font-black">
+                {getGreeting()}
+              </p>
+              <h1 className="text-5xl font-black text-white tracking-tight leading-none mb-4">
+                {userInfo?.name}
+              </h1>
+              <div className="flex flex-col gap-3">
+                <span className="inline-flex text-blue-400 font-mono text-[10px] bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-[0.2em] font-black">
+                  Authorized Role: {userInfo?.role || "Voter"}
+                </span>
+                <span className="text-gray-400 font-mono text-sm italic opacity-70 px-1">
                   {userInfo?.email}
                 </span>
-                <span className="text-blue-400 font-mono text-sm bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase tracking-widest font-bold">
-                  Role: {userInfo?.role || "Voter"}
-                </span>
               </div>
-            </div> */}
-            <div className="flex-1 flex flex-col items-center md:items-start">
-  {/* Username */}
-  <h1 className="text-4xl font-black text-white tracking-tight leading-none mb-2">
-    {userInfo?.name}
-  </h1>
+            </div>
 
-  {/* Role Badge - Now positioned directly below username */}
-  <div className="mb-3">
-    <span className="text-blue-400 font-mono text-[10px] bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20 uppercase tracking-[0.2em] font-black">
-      Role: {userInfo?.role || "Voter"}
-    </span>
-  </div>
-
-  {/* Email - Positioned as a secondary detail */}
-  <div className="flex items-center gap-2">
-    <span className="text-emerald-400 font-mono text-sm bg-emerald-500/5 px-3 py-1 rounded-full border border-emerald-500/10 italic opacity-80">
-      {userInfo?.email}
-    </span>
-  </div>
-</div>
-
-            <div className="hidden lg:block text-right">
-                <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-1">Account Standing</p>
-                <p className="text-2xl font-black text-white">{hasVoted ? "100%" : "0%"}</p>
-                <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Participation</p>
+            <div className="hidden lg:block bg-white/5 p-6 rounded-3xl border border-white/5 text-right">
+                <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-1">Participation</p>
+                <p className={`text-3xl font-black ${hasVoted ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {hasVoted ? "100%" : "0%"}
+                </p>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">Global Weight</p>
             </div>
           </div>
         </div>
 
         {/* MIDDLE SECTION: DATA GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          
-          {/* Blockchain Wallet Info */}
-          <div className="md:col-span-2 bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
-            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4">Web3 Identity Matrix</h3>
+          <div className="md:col-span-2 bg-white/5 border border-white/10 rounded-[2rem] p-8 backdrop-blur-md">
+            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6">Security Metadata</h3>
             <div className="space-y-4">
-              <div className="bg-black/40 p-4 rounded-2xl border border-white/5 group hover:border-emerald-500/30 transition-colors">
-                <p className="text-[10px] text-emerald-500 font-bold uppercase mb-2">Connected Wallet Address</p>
+              <div className="bg-slate-900/60 p-5 rounded-2xl border border-white/5">
+                <p className="text-[9px] text-emerald-500 font-black uppercase mb-2 tracking-widest">Public Address (ECDSA)</p>
                 <p className="font-mono text-xs text-gray-300 break-all leading-relaxed">
-                  {account || "Awaiting MetaMask Connection..."}
+                  {account || "Waiting for Wallet Authorization..."}
                 </p>
               </div>
-              <div className="flex justify-between items-center bg-black/40 p-4 rounded-2xl border border-white/5">
+              <div className="flex justify-between items-center bg-slate-900/60 p-5 rounded-2xl border border-white/5">
                 <div>
-                  <p className="text-[10px] text-blue-500 font-bold uppercase mb-1">Network Node</p>
-                  <p className="text-xs text-white font-mono">1337 (Local RPC Ganache)</p>
+                  <p className="text-[9px] text-blue-400 font-black uppercase mb-1 tracking-widest">Network Authority</p>
+                  <p className="text-xs text-white font-mono">1337 • Ganache Localhost</p>
                 </div>
-                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></div>
+                <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                    <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span className="text-[9px] text-emerald-500 font-black">ACTIVE</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Status Column */}
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md flex flex-col justify-between">
-             <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4">Ballot Status</h3>
-             <div className="text-center py-6">
+          <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8 backdrop-blur-md flex flex-col justify-between items-center text-center">
+             <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4">Integrity</h3>
+             <div className="py-2">
                 {hasVoted ? (
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="h-12 w-12 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center text-xl">✓</div>
-                        <p className="text-xl font-black text-white uppercase tracking-tighter">Vote Cast</p>
+                    <div className="space-y-2">
+                        <div className="h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center text-2xl mx-auto border border-emerald-500/20">✓</div>
+                        <p className="text-lg font-black text-white uppercase tracking-tighter">SECURED</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="h-12 w-12 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center text-xl animate-bounce">!</div>
-                        <p className="text-xl font-black text-white uppercase tracking-tighter">Action Required</p>
+                    <div className="space-y-2">
+                        <div className="h-16 w-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center text-2xl mx-auto border border-amber-500/20 animate-pulse font-serif italic">?</div>
+                        <p className="text-lg font-black text-white uppercase tracking-tighter">{electionStatus === "CLOSED" ? "EXPIRED" : "PENDING"}</p>
                     </div>
                 )}
              </div>
-             <p className="text-[9px] text-gray-500 text-center uppercase leading-tight italic">
-                {hasVoted ? "Transaction recorded on block" : "Ballot is ready for submission"}
+             <p className="text-[10px] text-gray-500 uppercase leading-tight font-medium">
+                {hasVoted ? "Hash recorded in Ledger" : electionStatus === "CLOSED" ? "Election window ended" : "Awaiting signature"}
              </p>
           </div>
         </div>
 
-        {/* TIMELINE SECTION */}
-        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 mb-10 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-md">
-            <div>
-                <h3 className="text-xs font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 text-center md:text-left">Live Election Timeline</h3>
-                <div className="flex items-center gap-4">
-                    <div className="text-center">
-                        <p className="text-[9px] text-gray-500 uppercase">Commencement</p>
-                        <p className="font-mono text-sm text-white">{dates.start || "TBD"}</p>
+        {/* TIMELINE & CTA SECTION */}
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] p-8 mb-10 flex flex-col md:flex-row items-center justify-between gap-8 backdrop-blur-xl shadow-2xl shadow-emerald-500/5">
+            <div className="space-y-4">
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded font-black text-[9px] uppercase tracking-widest ${
+                  electionStatus === "OPEN" ? "bg-emerald-500 text-slate-900" : 
+                  electionStatus === "CLOSED" ? "bg-red-500/20 text-red-500" : "bg-amber-500 text-slate-900"
+                }`}>
+                    {electionStatus}
+                </div>
+                <div className="flex items-center gap-8">
+                    <div>
+                        <p className="text-[9px] text-gray-500 uppercase font-black mb-1">Window Opens</p>
+                        <p className="font-mono text-sm text-white">{dates.start || "..."}</p>
                     </div>
-                    <div className="h-8 w-[1px] bg-white/10"></div>
-                    <div className="text-center">
-                        <p className="text-[9px] text-gray-500 uppercase">Conclusion</p>
-                        <p className="font-mono text-sm text-white">{dates.end || "TBD"}</p>
+                    <div className="h-10 w-[1px] bg-white/10"></div>
+                    <div>
+                        <p className="text-[9px] text-gray-500 uppercase font-black mb-1">Window Closes</p>
+                        <p className="font-mono text-sm text-white">{dates.end || "..."}</p>
                     </div>
                 </div>
             </div>
             
-            <div className="flex gap-3 w-full md:w-auto">
-                <button 
-                  onClick={() => router.push('/voting')}
-                  className="flex-1 md:w-40 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-black py-4 rounded-2xl transition-all shadow-xl shadow-emerald-500/10 active:scale-95 uppercase text-xs tracking-widest"
-                >
-                  Cast Vote
-                </button>
-                {/* <button 
-                  onClick={() => router.push('/results')}
-                  className="flex-1 md:w-40 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl border border-white/10 transition-all uppercase text-xs tracking-widest"
-                >
-                  Results
-                </button> */}
-            </div>
+            <button 
+              onClick={() => !cta.disabled && router.push(cta.path)}
+              disabled={cta.disabled}
+              className={`w-full md:w-56 py-5 rounded-2xl font-black transition-all active:scale-95 uppercase text-xs tracking-[0.2em] shadow-xl ${cta.style}`}
+            >
+              {cta.text}
+            </button>
         </div>
 
-        <p className="text-center text-gray-600 text-[10px] font-mono uppercase tracking-[0.3em]">
-          End-to-End Verifiable • Decentralized Governance • Secure Ledger v2.0
-        </p>
+        <div className="flex justify-center items-center gap-4 opacity-30 group cursor-default">
+            <div className="h-[1px] w-12 bg-gray-500"></div>
+            <p className="text-[10px] font-mono text-gray-400 uppercase tracking-[0.5em] group-hover:text-emerald-500 transition-colors">
+              Trustless Architecture v2.0
+            </p>
+            <div className="h-[1px] w-12 bg-gray-500"></div>
+        </div>
       </div>
     </div>
   );
