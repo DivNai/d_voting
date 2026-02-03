@@ -12,7 +12,7 @@ Real-time Analytics: Live voting results visualized through Chart.js.
 
 Management Portal: Secure Admin panel for candidate registration and timeline configuration.
 
-🛠️ Tech Stack
+🛠️ Tech Stack:
 Blockchain: Solidity, Ethers.js, Ganache, Truffle
 
 Frontend: Next.js (TypeScript), Tailwind CSS, Framer Motion
