@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Decentralized E-Voting System (D-Vote)
+A high-fidelity, full-stack decentralized application (dApp) designed to provide a trustless, immutable, and transparent voting process. This project leverages Ethereum Smart Contracts to ensure electoral integrity and Next.js for a modern, responsive user experience.
 
-## Getting Started
+🚀 Key Features
+Immutable Ledger: Every vote is cryptographically signed and recorded on the blockchain.
 
-First, run the development server:
+Automated Lifecycles: Smart Contract state machine handles election phases (Upcoming, Open, Closed) based on Unix timestamps.
 
-```bash
+Hybrid Auth: Bridges traditional Supabase identities with MetaMask (ECDSA) public-key addresses.
+
+Real-time Analytics: Live voting results visualized through Chart.js.
+
+Management Portal: Secure Admin panel for candidate registration and timeline configuration.
+
+🛠️ Tech Stack
+Blockchain: Solidity, Ethers.js, Ganache, Truffle
+
+Frontend: Next.js (TypeScript), Tailwind CSS, Framer Motion
+
+Backend: Supabase (Auth & User Profiles)
+
+🔧 Installation & Setup
+1. Prerequisite
+Node.js (v18+)
+
+MetaMask Browser Extension
+
+Ganache (Local Blockchain)
+
+2. Smart Contract Deployment
+Bash
+# Install Truffle globally
+npm install -g truffle
+
+# Compile and migrate contracts to Ganache
+truffle migrate --reset
+Copy the deployed contract address from the terminal output and ensure the Voting.json artifact is in your project's contracts/ folder.
+
+3. Environment Configuration
+Create a .env.local file in the root directory:
+
+Code snippet
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+4. Run the Frontend
+Bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+🏛️ Project Architecture
+The system utilizes a three-tier architecture:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Client Layer: Next.js application interacting with the user's MetaMask wallet.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Logic Layer: Ethers.js provider bridging the UI to the Smart Contract.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Data Layer: Distributed ledger (Ethereum) for votes and Supabase for off-chain user metadata.
