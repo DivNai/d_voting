@@ -1,7 +1,7 @@
 Decentralized E-Voting System (D-Vote)
 A high-fidelity, full-stack decentralized application (dApp) designed to provide a trustless, immutable, and transparent voting process. This project leverages Ethereum Smart Contracts to ensure electoral integrity and Next.js for a modern, responsive user experience.
 
-🚀 Key Features
+🚀 Key Features:
 Immutable Ledger: Every vote is cryptographically signed and recorded on the blockchain.
 
 Automated Lifecycles: Smart Contract state machine handles election phases (Upcoming, Open, Closed) based on Unix timestamps.
