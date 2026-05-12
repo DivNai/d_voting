@@ -1,160 +1,174 @@
-"use client";
-import React, { useState, useEffect } from 'react';
-import { useWeb3 } from '@/context/Web3Context';
-import { toast } from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+'use client';
 
-const VotingPage = () => {
-  const { 
-    candidates, 
-    userInfo, 
-    vote, 
-    hasVoted, 
-    contract, 
-    account, 
-    refreshData, 
-    loading: web3Loading, 
-    isTransacting, 
-    electionStatus, 
-    dates
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+import { useWeb3 } from '@/context/Web3Context';
+
+export default function VotingPage() {
+  const {
+    candidates, userInfo, vote, hasVoted,
+    contract, refreshData, loading,
+    isTransacting, electionStatus, dates, account,
   } = useWeb3();
 
-  const [selectedCandidate, setSelectedCandidate] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const router = useRouter();
 
-  const handleVote = async () => {
-    if (selectedCandidate === null) return toast.error("Please select a candidate!");
-    if (hasVoted) return toast.error("You have already cast your vote!");
-    if (!userInfo?.id) return toast.error("Please log in first!");
-    if (electionStatus !== "OPEN") return toast.error("The polls are not currently open.");
-
-    try {
-      await vote(selectedCandidate);
-    } catch (err: any) {
-      console.error("Voting failed", err);
-    }
-  };
-
   useEffect(() => {
-    if (contract) {
-      refreshData(contract, userInfo?.id);
-    }
+    if (contract) refreshData(contract, userInfo?.id);
   }, [contract, userInfo?.id, refreshData]);
 
+  const handleVote = async () => {
+    if (selectedId === null)           return toast.error('Please select a candidate.');
+    if (hasVoted)                      return toast.error('You have already voted.');
+    if (!userInfo?.id)                 return toast.error('Please sign in first.');
+    if (electionStatus !== 'OPEN')     return toast.error('The polls are not currently open.');
+    await vote(selectedId);
+  };
+
+  const selectedCandidate = candidates.find(c => c.id === selectedId);
+
+  const sc: Record<string, { bg: string; color: string; dot: string; border: string }> = {
+    OPEN:     { bg: '#ecfdf5', color: '#065f46', dot: '#10b981', border: '#a7f3d0' },
+    CLOSED:   { bg: '#fef2f2', color: '#991b1b', dot: '#ef4444', border: '#fecaca' },
+    UPCOMING: { bg: '#fffbeb', color: '#92400e', dot: '#f59e0b', border: '#fde68a' },
+  };
+  const s = sc[electionStatus] ?? sc.UPCOMING;
+
+  const avatarColors = [
+    { bg: 'var(--accent-dim)',   color: 'var(--accent)'  },
+    { bg: 'rgba(5,150,105,0.1)', color: '#059669'        },
+    { bg: 'var(--gold-dim)',     color: 'var(--gold)'    },
+    { bg: 'rgba(139,92,246,0.1)',color: '#7c3aed'        },
+  ];
+
+  /* ── POLLS CLOSED ── */
+  if (electionStatus === 'CLOSED') {
+    return (
+      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '48px 24px', textAlign: 'center' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+        <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Polls are closed</h1>
+        <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+          The election concluded at <strong>{dates.end}</strong>.
+        </p>
+        <button onClick={() => router.push('/results')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '12px 28px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)', boxShadow: '0 2px 8px rgba(29,111,219,0.25)' }}>
+          View results →
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen pt-32 pb-12 px-6 relative bg-transparent">
-      {/* Background Overlay */}
-      <div className="absolute inset-0 bg-slate-900/40 z-0 pointer-events-none"></div>
+    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '32px 24px 60px' }}>
 
-      <div className="relative z-10 max-w-5xl mx-auto">
-        <header className="mb-12 text-center">
-          <span className="text-[10px] text-emerald-500 font-mono tracking-[0.4em] uppercase font-black mb-2 block">
-            {electionStatus === "CLOSED" ? "Finalized Audit" : "Secure Decentralized Ballot"}
-          </span>
-          <h1 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">
-            {electionStatus === "CLOSED" ? "Polls Terminated" : "E-Voting Portal"}
-          </h1>
-          <p className="text-gray-400 font-mono text-xs italic">
-            {electionStatus === "CLOSED" ? "The election window has officially ended" : `Voter ID: ${userInfo?.id?.slice(0, 15)}...`}
-          </p>
-        </header>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Cast your vote</h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Select one candidate below</p>
+        </div>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: s.bg, color: s.color, border: `1px solid ${s.border}`, padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, marginTop: '4px' }}>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: s.dot, animation: electionStatus === 'OPEN' ? 'pulse-dot 1.6s ease-in-out infinite' : 'none' }} />
+          {electionStatus === 'OPEN' ? 'Polls open' : 'Upcoming'}
+        </span>
+      </div>
 
-        {/* TIMELINE LOGIC: DISAPPEARING CANDIDATES */}
-        {electionStatus === "CLOSED" ? (
-          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-16 rounded-[2.5rem] text-center shadow-2xl">
-             <div className="h-24 w-24 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/20">
-                <span className="text-4xl">🔒</span>
-             </div>
-             <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Election is Closed</h2>
-             <p className="text-gray-400 font-mono text-xs uppercase tracking-[0.2em] max-w-md mx-auto leading-relaxed">
-               As per the blockchain protocol, the active ballot has been removed. 
-               The election concluded at <span className="text-white">{dates.end}</span>.
-             </p>
-             <button 
-                onClick={() => router.push('/results')}
-                className="mt-10 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95"
-             >
-                View Final Consensus
-             </button>
+      {/* Timeline bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '12px 18px', marginBottom: '24px' }}>
+        <div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '3px' }}>Closes at</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12.5px', color: 'var(--text-primary)', fontWeight: 500 }}>{dates.end || 'TBD'}</div>
+        </div>
+        <div style={{ flex: 1, height: '1px', background: 'var(--border2)' }} />
+        <div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '3px' }}>Voter ID</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12.5px', color: 'var(--text-primary)', fontWeight: 500 }}>{userInfo?.id ? `${userInfo.id.slice(0, 12)}…` : '—'}</div>
+        </div>
+        <div style={{ flex: 1, height: '1px', background: 'var(--border2)' }} />
+        <div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '3px' }}>Wallet</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12.5px', color: 'var(--text-primary)', fontWeight: 500 }}>{account ? `${account.slice(0, 8)}…${account.slice(-6)}` : 'Not connected'}</div>
+        </div>
+      </div>
+
+      {/* Candidates label */}
+      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px' }}>
+        Candidates · {candidates.length} registered
+      </div>
+
+      {/* Candidate list */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+          Loading candidates from blockchain…
+        </div>
+      ) : candidates.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+          No candidates registered yet.
+        </div>
+      ) : (
+        <div>
+          {candidates.map(c => {
+            const isSelected = selectedId === c.id;
+            const canSelect  = !hasVoted && electionStatus === 'OPEN';
+            const av         = avatarColors[(c.id - 1) % avatarColors.length];
+
+            return (
+              <div
+                key={c.id}
+                onClick={() => { if (canSelect) setSelectedId(c.id); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '15px 18px', border: `1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border2)'}`, borderRadius: '10px', background: isSelected ? '#eff6ff' : 'var(--surface)', cursor: canSelect ? 'pointer' : 'default', marginBottom: '10px', transition: 'all 0.16s', boxShadow: isSelected ? '0 0 0 3px rgba(29,111,219,0.08)' : 'none' }}
+              >
+                {/* Radio */}
+                <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`, background: isSelected ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.16s' }}>
+                  {isSelected && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fff' }} />}
+                </div>
+
+                {/* Avatar */}
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: av.bg, color: av.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', fontWeight: 600, flexShrink: 0 }}>
+                  {c.name[0]}
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--text-primary)' }}>{c.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{c.party}</div>
+                </div>
+
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)' }}>#{c.id}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Submit */}
+      <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border2)' }}>
+        {hasVoted ? (
+          <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '10px', padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: 500, color: '#065f46' }}>
+            ✓ Your vote has been recorded on the blockchain.
           </div>
         ) : (
-          <div className="bg-black/40 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full animate-pulse ${electionStatus === "OPEN" ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-                {electionStatus === "OPEN" ? "Live Ballot" : "Awaiting Opening"}
-                </h3>
-                <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest bg-white/5 px-4 py-2 rounded-full border border-white/5">
-                    Closes: {dates.end || "TBD"}
-                </div>
+          <>
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#1e40af', marginBottom: '14px', lineHeight: 1.5 }}>
+              ℹ️ Clicking &ldquo;Submit vote&rdquo; will open a MetaMask transaction. Your vote is permanent and cannot be changed.
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/10 text-gray-400 text-xs uppercase">
-                    <th className="py-4 px-2 font-black">Select</th>
-                    <th className="py-4 font-black tracking-widest">Candidate</th>
-                    <th className="py-4 font-black tracking-widest">Party Affinity</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {candidates && candidates.length > 0 ? (
-                    candidates.map((candidate: any) => (
-                      <tr key={candidate.id} className="group hover:bg-emerald-500/5 transition-colors">
-                        <td className="py-6 px-2">
-                          <input 
-                            type="radio" 
-                            name="candidate"
-                            value={candidate.id}
-                            disabled={hasVoted || electionStatus === "UPCOMING"}
-                            onChange={() => setSelectedCandidate(candidate.id)}
-                            className="w-5 h-5 accent-emerald-500 cursor-pointer disabled:opacity-20" 
-                          />
-                        </td>
-                        <td className="py-6 font-bold text-lg text-white">{candidate.name}</td>
-                        <td className="py-6 text-gray-400 font-mono text-xs uppercase tracking-wider">{candidate.party}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={3} className="py-20 text-center text-gray-500 italic font-mono text-xs">
-                        {web3Loading ? "Synchronizing ledger data..." : "No candidates registered on this chain."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-12 flex flex-col items-center">
-              {hasVoted ? (
-                <div className="w-full py-6 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 rounded-2xl text-center font-black uppercase tracking-widest text-xs">
-                  ✓ Transaction confirmed. Your vote is immutable on the ledger.
-                </div>
-              ) : (
-                <button 
-                  onClick={handleVote}
-                  disabled={isTransacting || selectedCandidate === null || electionStatus === "UPCOMING"}
-                  className={`w-full md:w-1/2 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${
-                    isTransacting 
-                      ? 'bg-blue-600 text-white animate-pulse' 
-                      : 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-emerald-500/10'
-                  }`}
-                >
-                  {isTransacting ? "Broadcasting to Node..." : electionStatus === "UPCOMING" ? "Polls Locked" : "Submit Encrypted Vote"}
-                </button>
-              )}
-            </div>
-          </div>
+            <button
+              onClick={handleVote}
+              disabled={isTransacting || selectedId === null || electionStatus !== 'OPEN'}
+              style={{ width: '100%', padding: '13px', borderRadius: '10px', border: 'none', fontFamily: 'var(--font-sans)', fontSize: '15px', fontWeight: 600, transition: 'all 0.18s', cursor: (isTransacting || selectedId === null || electionStatus !== 'OPEN') ? 'not-allowed' : 'pointer', background: (isTransacting || selectedId === null || electionStatus !== 'OPEN') ? 'var(--border)' : 'var(--accent)', color: (isTransacting || selectedId === null || electionStatus !== 'OPEN') ? 'var(--text-muted)' : '#fff', boxShadow: (selectedId !== null && electionStatus === 'OPEN') ? '0 2px 8px rgba(29,111,219,0.25)' : 'none' }}
+            >
+              {isTransacting ? 'Broadcasting to blockchain…'
+                : electionStatus === 'UPCOMING' ? 'Polls not open yet'
+                : selectedCandidate ? `Submit vote for ${selectedCandidate.name}`
+                : 'Select a candidate to vote'}
+            </button>
+          </>
         )}
-
-        <footer className="mt-12 text-center text-gray-600 text-[10px] font-mono uppercase tracking-[0.3em]">
-           Node Identity: {account || "Awaiting MetaMask Handshake..."}
-        </footer>
       </div>
+
+      <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', marginTop: '20px' }}>
+        Node: {account || 'Awaiting wallet connection'}
+      </p>
     </div>
   );
-};
-
-export default VotingPage;
+}

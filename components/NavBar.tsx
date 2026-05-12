@@ -1,108 +1,100 @@
-"use client";
-import React from 'react';
+'use client';
+
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useWeb3 } from '@/context/Web3Context';
-import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-const NavBar = () => {
-  const { userInfo } = useWeb3();
-  const router = useRouter();
+export default function NavBar() {
+  const { userInfo, dateTimestamps } = useWeb3();
   const pathname = usePathname();
+  const router   = useRouter();
+
+  // Hide navbar on login page
+  if (pathname === '/') return null;
+
+  const isAdmin = userInfo?.role === 'admin';
+
+  // Results only visible to voters after election closes
+  const nowSec      = Math.floor(Date.now() / 1000);
+  const datesLoaded = dateTimestamps.end > 0;
+  const isClosed    = datesLoaded && nowSec > dateTimestamps.end;
+  const showResults = isAdmin || isClosed;
+
+  const isActive = (path: string) =>
+    pathname === path
+      ? 'text-white bg-white/10'
+      : 'text-white/50 hover:text-white hover:bg-white/7';
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
   };
 
-  // If we are on the login page (root route), do not render the NavBar
-  if (pathname === '/') return null;
-
-  const isActive = (path: string) => pathname === path;
+  const linkStyle = (path: string): React.CSSProperties => ({
+    fontSize: '13px', fontWeight: 500, textDecoration: 'none',
+    padding: '6px 14px', borderRadius: '6px', transition: 'all 0.16s',
+    color: pathname === path ? '#fff' : 'rgba(255,255,255,0.5)',
+    background: pathname === path ? 'rgba(255,255,255,0.1)' : 'transparent',
+  });
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-[100] bg-slate-900/80 backdrop-blur-xl border-b border-white/10 px-6 py-4">
-      <div className="max-w-7xl mx-auto flex justify-end items-center">
-        
-        {/* Brand Area */}
-        {/* <Link href="/" className="flex items-center gap-3 group transition-transform active:scale-95">
-          <div className="h-10 w-10 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <span className="text-slate-900 font-black text-xl">V</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-lg tracking-tight text-white leading-none">Next-DVoting</span>
-            <span className="text-[9px] text-emerald-500 font-mono uppercase tracking-[0.2em] font-black mt-1">Blockchain Ledger</span>
-          </div>
-        </Link> */}
+    <nav style={{ background: 'var(--blue-900)', borderBottom: '1px solid rgba(255,255,255,0.07)', height: '60px', display: 'flex', alignItems: 'center', padding: '0 28px', position: 'sticky', top: 0, zIndex: 100 }}>
 
-        {/* Action Area */}
-        <div className="flex items-center gap-4 md:gap-8">
-          
-          {/* RESULTS LINK: Only visible if user is NOT a voter (e.g., Admin) 
-              Or you can set it to only show for admin: userInfo?.role === 'admin'
-          */}
-          {userInfo && userInfo.role !== 'voter' && (
-            <Link 
-              href="/results" 
-              className={`text-xs uppercase tracking-widest font-bold transition-colors ${isActive('/results') ? 'text-emerald-400' : 'text-gray-400 hover:text-white'}`}
-            >
-              Results
-            </Link>
-          )}
+      {/* Brand */}
+      <Link
+        href={isAdmin ? '/admin' : '/account'}
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}
+      >
+        {/* <div style={{ width: '32px', height: '32px', background: 'var(--accent)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#fff', fontSize: '14px', fontFamily: 'var(--font-sans)' }}>
+          dV
+        </div> */}
+        <span style={{ fontSize: '16px', fontWeight: 600, color: '#fff', letterSpacing: '-0.3px' }}>Blockchain Voting System</span>
+      </Link>
 
-          
-          {userInfo ? (
-            <div className="flex items-center gap-3 pl-6 border-l border-white/10">
-              
-              {/* ADMIN ONLY LINK: Only shows if role is 'admin' */}
-              {userInfo.role === 'admin' && (
-                <Link 
-                  href="/admin" 
-                  className={`text-xs uppercase tracking-widest font-bold transition-colors border border-emerald-500/30 px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 ${isActive('/admin') ? 'text-emerald-400 border-emerald-500' : 'text-emerald-500/80'}`}
-                >
-                  Admin Panel
-                </Link>
-              )}
+      {/* Links */}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {userInfo && (
+          <>
+            {/* Voter links */}
+            {!isAdmin && (
+              <>
+                <Link href="/account" style={linkStyle('/account')}>Dashboard</Link>
+                <Link href="/voting"  style={linkStyle('/voting')}>Vote</Link>
+                {/* Results only shown when election is closed */}
+                {showResults && (
+                  <Link href="/results" style={linkStyle('/results')}>Results</Link>
+                )}
+              </>
+            )}
 
-              <Link 
-                href="/voting" 
-                className={`text-xs uppercase tracking-widest font-bold transition-colors border border-emerald-500/30 px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 ${isActive('/voting') ? 'text-emerald-400 border-emerald-500' : 'text-emerald-500/80'}`}
-              >
-                Vote Here
-              </Link>
+            {/* Admin links */}
+            {isAdmin && (
+              <>
+                <Link href="/admin"   style={linkStyle('/admin')}>Admin</Link>
+                <Link href="/results" style={linkStyle('/results')}>Results</Link>
+              </>
+            )}
 
-              <Link 
-                href="/account" 
-                className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/10 hover:border-emerald-500/30 transition-all"
-              >
-                <div className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </div>
-                <span className="text-sm font-semibold text-gray-200">
-                  {userInfo.name || "Voter"}
-                </span>
-              </Link>
-
-              <button 
-                onClick={handleLogout}
-                className="text-xs font-black text-red-500/70 hover:text-red-500 transition-colors ml-2 uppercase tracking-tighter"
-              >
-                Logout
-              </button>
+            {/* User chip */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '5px 14px 5px 10px', marginLeft: '8px' }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 0 2px rgba(34,197,94,0.2)', flexShrink: 0 }} />
+              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>
+                {userInfo.name || userInfo.email?.split('@')[0] || 'User'}
+              </span>
             </div>
-          ) : (
-            <Link 
-              href="/" 
-              className="bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 rounded-xl text-xs font-black text-slate-900 shadow-xl shadow-emerald-500/10 transition-all uppercase tracking-widest"
+
+            <button
+              onClick={handleLogout}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: 'rgba(248,113,113,0.7)', padding: '6px 10px', borderRadius: '6px', fontFamily: 'var(--font-sans)', transition: 'color 0.16s', marginLeft: '2px' }}
+              onMouseOver={e => (e.currentTarget.style.color = '#f87171')}
+              onMouseOut={e => (e.currentTarget.style.color = 'rgba(248,113,113,0.7)')}
             >
-              Secure Login
-            </Link>
-          )}
-        </div>
+              Sign out
+            </button>
+          </>
+        )}
       </div>
     </nav>
   );
-};
-
-export default NavBar;
+}

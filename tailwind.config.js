@@ -1,12 +1,20 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./context/**/*.{js,ts,jsx,tsx,mdx}",
+    './app/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './context/**/*.{ts,tsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["'IBM Plex Sans'", 'sans-serif'],
+        mono: ["'IBM Plex Mono'", 'monospace'],
+      },
+      colors: {
+        accent: '#1d6fdb',
+      },
+    },
   },
   plugins: [],
-}
+};

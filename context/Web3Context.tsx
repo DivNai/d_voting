@@ -5,59 +5,98 @@ import votingArtifact from '../contracts/Voting.json';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'react-hot-toast';
 
-const Web3Context = createContext<any>(null);
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface Candidate {
+  id: number;
+  name: string;
+  party: string;
+  voteCount: number;
+}
+
+export interface UserInfo {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+interface Web3ContextValue {
+  account: string;
+  contract: ethers.Contract | null;
+  candidates: Candidate[];
+  dates: { start: string; end: string };
+  dateTimestamps: { start: number; end: number };
+  hasVoted: boolean;
+  userInfo: UserInfo | null;
+  loading: boolean;
+  txLoading: boolean;
+  isTransacting: boolean;
+  electionStatus: 'UPCOMING' | 'OPEN' | 'CLOSED';
+  networkName: string;
+  initWeb3: () => Promise<{ contract: ethers.Contract | null; address: string }>;
+  refreshData: (votingContract: ethers.Contract, userId?: string) => Promise<void>;
+  setUserInfo: React.Dispatch<React.SetStateAction<UserInfo | null>>;
+  vote: (candidateId: number) => Promise<void>;
+  pushElectionData: (name: string, party: string, startDate: string, endDate: string) => Promise<void>;
+  setElectionDates: (startDate: string, endDate: string) => Promise<void>;
+  resetBlockchainData: () => Promise<void>;
+}
+
+const Web3Context = createContext<Web3ContextValue | null>(null);
 
 export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
-  const [account, setAccount] = useState<string>("");
-  const [contract, setContract] = useState<any>(null);
-  const [candidates, setCandidates] = useState<any[]>([]);
-  const [dates, setDates] = useState({ start: "", end: "" });
-  const [hasVoted, setHasVoted] = useState(false);
-  const [userInfo, setUserInfo] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [txLoading, setTxLoading] = useState(false);
-  const [isTransacting, setIsTransacting] = useState(false);
-  const [electionStatus, setElectionStatus] = useState<"UPCOMING" | "OPEN" | "CLOSED">("UPCOMING");
 
-  // --- 1. ELECTION TIMELINE LOGIC ---
+  const [account,           setAccount]        = useState<string>('');
+  const [contract,          setContract]       = useState<ethers.Contract | null>(null);
+  const [candidates,        setCandidates]     = useState<Candidate[]>([]);
+  const [dates,             setDates]          = useState({ start: '', end: '' });
+  const [dateTimestamps,    setDateTimestamps] = useState({ start: 0, end: 0 });
+  const [hasVoted,          setHasVoted]       = useState(false);
+  const [userInfo,          setUserInfo]       = useState<UserInfo | null>(null);
+  const [loading,           setLoading]        = useState(true);
+  const [txLoading,         setTxLoading]      = useState(false);
+  const [isTransacting,     setIsTransacting]  = useState(false);
+  const [electionStatus,    setElectionStatus] = useState<'UPCOMING' | 'OPEN' | 'CLOSED'>('UPCOMING');
+  const [networkName,       setNetworkName]    = useState('');
+
+  // ─── 1. ELECTION STATUS — uses raw unix timestamps, not locale strings ───────
   const updateElectionStatus = useCallback(() => {
-    if (!dates.start || !dates.end || dates.start.includes("1970")) {
-       setElectionStatus("UPCOMING");
-       return;
+    const { start, end } = dateTimestamps;
+    if (!start || !end) {
+      setElectionStatus('UPCOMING');
+      return;
     }
-
-    const now = new Date().getTime();
-    const start = new Date(dates.start).getTime();
-    const end = new Date(dates.end).getTime();
-
-    if (now < start) setElectionStatus("UPCOMING");
-    else if (now > end) setElectionStatus("CLOSED");
-    else setElectionStatus("OPEN");
-  }, [dates]);
+    const nowSec = Math.floor(Date.now() / 1000);
+    if      (nowSec < start) setElectionStatus('UPCOMING');
+    else if (nowSec > end)   setElectionStatus('CLOSED');
+    else                     setElectionStatus('OPEN');
+  }, [dateTimestamps]);
 
   useEffect(() => {
     updateElectionStatus();
-    const interval = setInterval(updateElectionStatus, 10000);
-    return () => clearInterval(interval);
+    // Check every second so status flips instantly when polls open/close
+    const id = setInterval(updateElectionStatus, 1_000);
+    return () => clearInterval(id);
   }, [updateElectionStatus]);
 
-  // --- 2. SUPABASE AUTH LOGIC ---
+  // ─── 2. SUPABASE AUTH ────────────────────────────────────────────────────────
   useEffect(() => {
-    const fetchProfile = async (user: any) => {
+    const fetchProfile = async (user: { id: string; email?: string }) => {
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, full_name')
           .eq('id', user.id)
-          .single();
-        
+          .maybeSingle();
+
         setUserInfo({
-          id: user.id,
-          email: user.email,
-          role: profile?.role || 'voter'
+          id:    user.id,
+          email: user.email ?? '',
+          name:  profile?.full_name ?? '',
+          role:  profile?.role ?? 'voter',
         });
       } catch (err) {
-        console.error("Profile fetch error:", err);
+        console.error('Profile fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -68,89 +107,84 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session) fetchProfile(session.user);
-      else {
-        setUserInfo(null);
-        setLoading(false);
-      }
+      else { setUserInfo(null); setLoading(false); }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- 3. REFRESH BLOCKCHAIN DATA ---
-  const refreshData = useCallback(async (votingContract: any, userId?: string) => {
+  // ─── 3. REFRESH BLOCKCHAIN DATA ──────────────────────────────────────────────
+  const refreshData = useCallback(async (votingContract: ethers.Contract, userId?: string) => {
     if (!votingContract) return;
     try {
-      // 1. Fetch Candidates
+      // Fetch candidates
       const count = await votingContract.candidatesCount();
-      const tempCandidates = [];
+      const temp: Candidate[] = [];
       for (let i = 1; i <= Number(count); i++) {
         const c = await votingContract.candidates(i);
-        if (c[1] !== "") { // Ensure candidate isn't deleted/empty
-            tempCandidates.push({ 
-                id: Number(c[0]), 
-                name: c[1], 
-                party: c[2], 
-                voteCount: Number(c[3]) 
-            });
-        }
+        if (c[1] !== '') temp.push({ id: Number(c[0]), name: c[1], party: c[2], voteCount: Number(c[3]) });
       }
-      setCandidates(tempCandidates);
+      setCandidates(temp);
 
-      // 2. Fetch Dates
+      // Fetch dates as raw unix timestamps
       try {
-        const sUnix = await votingContract.votingStart();
-        const eUnix = await votingContract.votingEnd();
-
-        if (Number(sUnix) !== 0 && Number(eUnix) !== 0) {
+        const sUnix = Number(await votingContract.votingStart());
+        const eUnix = Number(await votingContract.votingEnd());
+        if (sUnix !== 0 && eUnix !== 0) {
+          setDateTimestamps({ start: sUnix, end: eUnix });
           setDates({
-            start: new Date(Number(sUnix) * 1000).toLocaleString(),
-            end: new Date(Number(eUnix) * 1000).toLocaleString()
+            start: new Date(sUnix * 1000).toLocaleString(),
+            end:   new Date(eUnix * 1000).toLocaleString(),
           });
         } else {
-          setDates({ start: "", end: "" });
+          setDateTimestamps({ start: 0, end: 0 });
+          setDates({ start: '', end: '' });
         }
-      } catch (dateErr) {
-        console.warn("Date fetch failed");
-      }
+      } catch { /* dates not set yet */ }
 
-      // 3. Check Voting Status (This uses the electionRound logic in your contract)
+      // Check if this user has already voted
       if (userId) {
         const voted = await votingContract.checkVote(userId);
         setHasVoted(voted);
       }
     } catch (err) {
-      console.error("Blockchain sync error:", err);
+      console.error('Blockchain sync error:', err);
     }
   }, []);
 
-  // --- 4. INITIALIZE WEB3 ---
-  const initWeb3 = useCallback(async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        setAccount(accounts[0]);
+  // ─── 4. INIT WEB3 ────────────────────────────────────────────────────────────
+  const initWeb3 = useCallback(async (): Promise<{
+    contract: ethers.Contract | null; address: string;
+  }> => {
+    if (!(window as any).ethereum) {
+      toast.error('MetaMask not found. Please install it.');
+      return { contract: null, address: '' };
+    }
+    try {
+      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+      const walletAddress = accounts[0];
+      setAccount(walletAddress);
 
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const network = await provider.getNetwork();
-        const currentNetworkId = network.chainId.toString();
-        
-        const deployedNetwork = (votingArtifact.networks as any)[currentNetworkId];
-        
-        if (deployedNetwork) {
-          const votingContract = new ethers.Contract(
-            deployedNetwork.address,
-            votingArtifact.abi,
-            signer
-          );
-          setContract(votingContract);
-        }
-      } catch (err) {
-        console.error("Web3 Init failed:", err);
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer   = await provider.getSigner();
+      const network  = await provider.getNetwork();
+      const chainId  = network.chainId.toString();
+      setNetworkName(network.name !== 'unknown' ? network.name : `Chain ${chainId}`);
+
+      const deployed = (votingArtifact.networks as Record<string, { address: string }>)[chainId];
+      if (!deployed) {
+        toast.error(`Contract not deployed on chain ${chainId}. Run: truffle migrate --reset`);
+        return { contract: null, address: walletAddress };
       }
+
+      const votingContract = new ethers.Contract(deployed.address, votingArtifact.abi, signer);
+      setContract(votingContract);
+      return { contract: votingContract, address: walletAddress };
+    } catch (err) {
+      console.error('Web3 Init failed:', err);
+      return { contract: null, address: '' };
     }
   }, []);
 
@@ -160,56 +194,89 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
     if (contract) refreshData(contract, userInfo?.id);
   }, [contract, userInfo?.id, refreshData]);
 
-  // --- 5. EXPORTED SMART CONTRACT FUNCTIONS ---
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  CONTRACT FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const vote = async (candidateId: number) => {
-    if (!contract) return toast.error("Connect wallet first");
-    if (!userInfo?.id) return toast.error("User identity not found");
-    if (electionStatus !== "OPEN") return toast.error("Polls are currently closed");
+    if (!contract)             return toast.error('Connect MetaMask first.');
+    if (!userInfo?.id)         return toast.error('User identity not found. Please sign in.');
+    if (electionStatus !== 'OPEN') return toast.error('Polls are currently closed.');
 
     setIsTransacting(true);
     return toast.promise(
       (async () => {
-        // FIX: Must pass candidateId AND userId to match Solidity vote(uint, string)
         const tx = await contract.vote(candidateId, userInfo.id);
         await tx.wait();
         await refreshData(contract, userInfo.id);
         setIsTransacting(false);
       })(),
       {
-        loading: 'Broadcasting vote to Blockchain...',
+        loading: 'Broadcasting vote to blockchain…',
         success: <b>Vote successfully recorded!</b>,
-        error: (err) => {
+        error: (err: { reason?: string; message?: string }) => {
           setIsTransacting(false);
-          return `Transaction failed: ${err.reason || err.message}`;
+          return `Transaction failed: ${err.reason ?? err.message}`;
         },
       }
     );
   };
 
-  const pushElectionData = async (name: string, party: string, start: string, end: string) => {
-    if (!contract) throw new Error("Contract not connected");
+  const pushElectionData = async (
+    name: string, party: string, startDate: string, endDate: string
+  ) => {
+    if (!contract) throw new Error('Contract not connected');
     setIsTransacting(true);
     setTxLoading(true);
-
     return toast.promise(
       (async () => {
+        // Transaction 1 — add candidate
         const candTx = await contract.addCandidate(name, party);
         await candTx.wait();
 
-        const startUnix = Math.floor(new Date(start).getTime() / 1000);
-        const endUnix = Math.floor(new Date(end).getTime() / 1000);
-        const dateTx = await contract.setDates(startUnix, endUnix);
-        await dateTx.wait();
+        // Transaction 2 — set dates only if provided
+        if (startDate && endDate) {
+          const startUnix = Math.floor(new Date(startDate).getTime() / 1000);
+          const endUnix   = Math.floor(new Date(endDate).getTime()   / 1000);
+          const dateTx    = await contract.setDates(startUnix, endUnix);
+          await dateTx.wait();
+        }
 
         await refreshData(contract, userInfo?.id);
         setIsTransacting(false);
         setTxLoading(false);
       })(),
       {
-        loading: 'Pushing Election Config to Ledger...',
-        success: 'Deployment Successful!',
-        error: 'Blockchain update failed.',
+        loading: 'Pushing candidate to ledger…',
+        success: 'Candidate added successfully!',
+        error: (err: { reason?: string; message?: string }) => {
+          setIsTransacting(false);
+          setTxLoading(false);
+          return `Blockchain update failed: ${err.reason ?? err.message}`;
+        },
+      }
+    );
+  };
+
+  const setElectionDates = async (startDate: string, endDate: string) => {
+    if (!contract) throw new Error('Contract not connected');
+    setIsTransacting(true);
+    return toast.promise(
+      (async () => {
+        const startUnix = Math.floor(new Date(startDate).getTime() / 1000);
+        const endUnix   = Math.floor(new Date(endDate).getTime()   / 1000);
+        const tx = await contract.setDates(startUnix, endUnix);
+        await tx.wait();
+        await refreshData(contract, userInfo?.id);
+        setIsTransacting(false);
+      })(),
+      {
+        loading: 'Updating election dates…',
+        success: 'Election dates updated!',
+        error: (err: { reason?: string; message?: string }) => {
+          setIsTransacting(false);
+          return `Date update failed: ${err.reason ?? err.message}`;
+        },
       }
     );
   };
@@ -217,37 +284,44 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
   const resetBlockchainData = async () => {
     if (!contract) return;
     setIsTransacting(true);
-    
     return toast.promise(
       (async () => {
-        const tx = await contract.resetElection(); 
+        const tx = await contract.resetElection();
         await tx.wait();
-        
-        // Local state reset
-        setHasVoted(false); 
+        setHasVoted(false);
         setCandidates([]);
-        setDates({ start: "", end: "" });
-        
+        setDates({ start: '', end: '' });
+        setDateTimestamps({ start: 0, end: 0 });
         await refreshData(contract, userInfo?.id);
         setIsTransacting(false);
       })(),
       {
-        loading: 'Wiping Ledger & Starting New Round...',
-        success: 'System Reset! Ready for new election.',
-        error: 'Reset failed.',
+        loading: 'Wiping ledger & starting new round…',
+        success: 'System reset! Ready for new election.',
+        error: (err: { reason?: string; message?: string }) => {
+          setIsTransacting(false);
+          return `Reset failed: ${err.reason ?? err.message}`;
+        },
       }
     );
   };
 
   return (
-    <Web3Context.Provider value={{ 
-      account, contract, candidates, dates, hasVoted, userInfo, 
-      loading, txLoading, isTransacting, electionStatus,
-      refreshData, setUserInfo, vote, pushElectionData, resetBlockchainData 
+    <Web3Context.Provider value={{
+      account, contract, candidates, dates, dateTimestamps,
+      hasVoted, userInfo, loading, txLoading, isTransacting,
+      electionStatus, networkName,
+      initWeb3, refreshData, setUserInfo,
+      vote,
+      pushElectionData, setElectionDates, resetBlockchainData,
     }}>
       {children}
     </Web3Context.Provider>
   );
 };
 
-export const useWeb3 = () => useContext(Web3Context);
+export const useWeb3 = () => {
+  const ctx = useContext(Web3Context);
+  if (!ctx) throw new Error('useWeb3 must be used inside Web3Provider');
+  return ctx;
+};
