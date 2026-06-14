@@ -51,9 +51,10 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch all voters using service role key — bypasses RLS
+  // BUG FIX: also select new fields aadhaar_id, gender, dob
   const { data: voters, error } = await admin
     .from('profiles')
-    .select('id, full_name, voter_id, status')
+    .select('id, full_name, voter_id, aadhaar_id, gender, dob, status')
     .eq('role', 'voter')
     .order('status');
 
@@ -85,7 +86,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await request.json();
+  // BUG FIX: wrap JSON parse in try/catch to handle malformed bodies
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
   const { voterId, status } = body;
 
   if (!voterId || !['approved', 'rejected'].includes(status)) {

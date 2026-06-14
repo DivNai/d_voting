@@ -10,6 +10,9 @@ interface VoterProfile {
   id: string;
   full_name: string | null;
   voter_id: string | null;
+  aadhaar_id: string | null;
+  gender: string | null;
+  dob: string | null;
   status: 'pending' | 'approved' | 'rejected';
 }
 
@@ -303,8 +306,10 @@ export default function AdminPortal() {
               </div>
             ) : (
               <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 160px', gap: '12px', padding: '10px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border2)', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                  <span>Voter</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 130px 90px 110px 160px', gap: '10px', padding: '10px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border2)', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  <span>Voter / DOB</span>
+                  <span>Aadhaar / ID</span>
+                  <span>Gender</span>
                   <span>Status</span>
                   <span>Actions</span>
                 </div>
@@ -316,16 +321,29 @@ export default function AdminPortal() {
                     pending:  { bg: '#fffbeb', color: '#92400e', border: '#fde68a', label: '⏳ Pending'  },
                     rejected: { bg: '#fef2f2', color: '#991b1b', border: '#fecaca', label: '✕ Rejected'  },
                   }[voter.status];
+                  const genderLabel: Record<string, string> = {
+                    male: 'Male', female: 'Female', other: 'Other', prefer_not_to_say: 'N/A',
+                  };
 
                   return (
-                    <div key={voter.id} style={{ display: 'grid', gridTemplateColumns: '1fr 140px 160px', gap: '12px', alignItems: 'center', padding: '13px 20px', borderBottom: '1px solid var(--border2)' }}>
+                    <div key={voter.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 130px 90px 110px 160px', gap: '10px', alignItems: 'center', padding: '13px 20px', borderBottom: '1px solid var(--border2)' }}>
                       <div>
                         <div style={{ fontSize: '13.5px', fontWeight: 500, color: 'var(--text-primary)' }}>
                           {voter.full_name || 'Name not provided'}
                         </div>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {voter.id.slice(0, 20)}…
+                          DOB: {voter.dob || '—'}
                         </div>
+                      </div>
+
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                        {voter.aadhaar_id
+                          ? `${voter.aadhaar_id.slice(0, 4)} •••• ${voter.aadhaar_id.slice(-4)}`
+                          : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      </div>
+
+                      <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                        {voter.gender ? (genderLabel[voter.gender] ?? voter.gender) : '—'}
                       </div>
 
                       <span style={{ background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 500, width: 'fit-content' }}>
