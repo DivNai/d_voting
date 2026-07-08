@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { useWeb3 } from '@/context/Web3Context';
-
+//all imports
 export default function VotingPage() {
   const {
     candidates, userInfo, vote, hasVoted,
@@ -164,7 +164,8 @@ export default function VotingPage() {
             </button>
           </>
         )}
-      </div>
+      </div> 
+      
 
       <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', marginTop: '20px' }}>
         Node: {account || 'Awaiting wallet connection'}
